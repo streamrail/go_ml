@@ -177,6 +177,8 @@ func (rg *Regression) Accuracy() float64 {
 
 		if h >= 0.5 && y == 1 {
 			correct++
+		} else if h < 0.5 && y == 0 {
+			correct++
 		}
 	}
 

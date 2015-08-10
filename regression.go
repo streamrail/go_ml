@@ -166,14 +166,30 @@ func (rg *Regression) logisticRegCostFunction(lambda float64, calcGrad bool) (j 
 	return
 }
 
+func (rg *Regression) Accuracy() float64 {
+	m := len(rg.X)
+	correct := 0.0
+
+	for i := 0; i < m; i++ {
+		x := rg.X[i]
+		y := rg.Y[i]
+		h := rg.LogisticHipotesis(x)
+
+		if h >= 0.5 && y == 1 {
+			correct++
+		}
+	}
+
+	return correct / float64(m)
+}
+
 // MinimizeCost this metod splits the given data in three sets: training, cross
 // validation, test. In order to calculate the optimal theta, tries with
 // different possibilities and the training data, and check the best match with
 // the cross validations, after obtain the best lambda, check the perfomand
 // against the test set of data
 func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) (finalCost float64, trainingData *Regression, lambda float64, testData *Regression) {
-	// lambdas := []float64{0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300}
-	lambdas := []float64{1}
+	lambdas := []float64{0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300}
 
 	if suffleData {
 		rg = rg.shuffle()
@@ -181,10 +197,25 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 
 	// Get the 60% of the data as training data, 20% as cross validation, and
 	// the remaining 20% as test data
+	training := int64(float64(len(rg.X)) * 0.6)
+	cv := int64(float64(len(rg.X)) * 0.8)
 
 	trainingData = &Regression{
-		X:         rg.X,
-		Y:         rg.Y,
+		X:         rg.X[:training],
+		Y:         rg.Y[:training],
+		Theta:     rg.Theta,
+		LinearReg: rg.LinearReg,
+	}
+
+	cvData := &Regression{
+		X:         rg.X[training:cv],
+		Y:         rg.Y[training:cv],
+		Theta:     rg.Theta,
+		LinearReg: rg.LinearReg,
+	}
+	testData = &Regression{
+		X:         rg.X[cv:],
+		Y:         rg.Y[cv:],
 		Theta:     rg.Theta,
 		LinearReg: rg.LinearReg,
 	}
@@ -192,6 +223,7 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 	// Launch a process for each lambda in order to obtain the one with best
 	// performance
 	bestJ := math.Inf(1)
+	bestA := 0.0
 	bestLambda := 0.0
 	initTheta := make([]float64, len(trainingData.Theta))
 	copy(initTheta, trainingData.Theta)
@@ -202,14 +234,25 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 		}
 		copy(trainingData.Theta, initTheta)
 		Fmincg(trainingData, posLambda, 10, verbose)
+		cvData.Theta = trainingData.Theta
 
-		j, _, _ := trainingData.CostFunction(posLambda, false)
+		j, _, _ := cvData.CostFunction(posLambda, false)
 
 		if bestJ > j {
 			bestJ = j
+			// bestLambda = posLambda
+		}
+
+		accuracy := trainingData.Accuracy()
+		if accuracy > bestA {
+			bestA = accuracy
 			bestLambda = posLambda
 		}
 	}
+
+	// Include the cross validation cases into the training for the final train
+	trainingData.X = append(trainingData.X, cvData.X...)
+	trainingData.Y = append(trainingData.Y, cvData.Y...)
 
 	if verbose {
 		fmt.Println("Lambda:", bestLambda)
@@ -217,9 +260,10 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 	}
 	Fmincg(trainingData, bestLambda, maxIters, verbose)
 
+	testData.Theta = trainingData.Theta
 	rg.Theta = trainingData.Theta
 
-	finalCost, _, _ = trainingData.CostFunction(bestLambda, false)
+	finalCost, _, _ = testData.CostFunction(bestLambda, false)
 	bestLambda = bestLambda
 
 	return

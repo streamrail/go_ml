@@ -193,7 +193,7 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 	lambdas := []float64{0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10}
 
 	if suffleData {
-		rg = rg.shuffle()
+		rg.shuffle()
 	}
 
 	// Get the 60% of the data as training data, 20% as cross validation, and
@@ -293,22 +293,16 @@ func (rg *Regression) setTheta(t [][][]float64) {
 }
 
 // shuffle redistribute randomly all the X and Y rows of the instance
-func (rg *Regression) shuffle() (shuffledData *Regression) {
+func (rg *Regression) shuffle() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
-	shuffledData = &Regression{
-		X: make([][]float64, len(rg.X)),
-		Y: make([]float64, len(rg.Y)),
-	}
+	X := make([][]float64, len(rg.X))
+	Y := make([]float64, len(rg.Y))
 
 	for i, v := range rand.Perm(len(rg.X)) {
-		shuffledData.X[v] = rg.X[i]
-		shuffledData.Y[v] = rg.Y[i]
+		rg.X[i] = X[v]
+		rg.Y[i] = Y[v]
 	}
-
-	shuffledData.Theta = rg.Theta
-
-	return
 }
 
 // unrollThetasGrad converts the given two dim slice to a tree dim slice in order

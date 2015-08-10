@@ -299,6 +299,9 @@ func (rg *Regression) shuffle() {
 	X := make([][]float64, len(rg.X))
 	Y := make([]float64, len(rg.Y))
 
+	copy(X, rg.X)
+	copy(Y, rg.Y)
+
 	for i, v := range rand.Perm(len(rg.X)) {
 		rg.X[i] = X[v]
 		rg.Y[i] = Y[v]

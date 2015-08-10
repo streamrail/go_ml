@@ -1,22 +1,22 @@
 package ml
 
 import (
-	"github.com/alonsovidales/go_matrix"
 	"fmt"
-	"strconv"
+	"github.com/alonsovidales/go_matrix"
+	"io/ioutil"
 	"math"
 	"math/rand"
-	"time"
-	"io/ioutil"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Regression Linear and logistic regression structure
 type Regression struct {
 	X [][]float64 // Training set of values for each feature, the first dimension are the test cases
-	Y []float64 // The training set with values to be predicted
+	Y []float64   // The training set with values to be predicted
 	// 1st dim -> layer, 2nd dim -> neuron, 3rd dim theta
-	Theta []float64
+	Theta     []float64
 	LinearReg bool // true indicates that this is a linear regression problem, false a logistic regression one
 }
 
@@ -86,11 +86,10 @@ func (rg *Regression) linearRegCostFunction(lambda float64, calcGrad bool) (j fl
 	regTerm := (lambda / (2 * m)) * mt.SumAll(mt.Apply([][]float64{rg.Theta[1:]}, powTwo))
 
 	j = errors + regTerm
-	grad = [][][]float64{mt.Sum(mt.MultBy(mt.Mult(mt.Sub(pred, y), rg.X), 1 / m), mt.MultBy(theta, lambda / m))}
+	grad = [][][]float64{mt.Sum(mt.MultBy(mt.Mult(mt.Sub(pred, y), rg.X), 1/m), mt.MultBy(theta, lambda/m))}
 
 	return
 }
-
 
 // LoadFile loads information from the local file located at filePath, and after
 // parse it, returns the Regression ready to be used with all the information
@@ -153,8 +152,7 @@ func (rg *Regression) logisticRegCostFunction(lambda float64, calcGrad bool) (j 
 	y := [][]float64{rg.Y}
 
 	hx := mt.Apply(mt.Mult(theta, mt.Trans(rg.X)), sigmoid)
-	j = (
-		mt.Mult(mt.Apply(y, neg), mt.Trans(mt.Apply(hx, math.Log)))[0][0] -
+	j = (mt.Mult(mt.Apply(y, neg), mt.Trans(mt.Apply(hx, math.Log)))[0][0] -
 		mt.Mult(mt.Apply(y, oneMinus), mt.Trans(mt.Apply(mt.Apply(hx, oneMinus), math.Log)))[0][0]) / m
 
 	// Regularization
@@ -162,8 +160,8 @@ func (rg *Regression) logisticRegCostFunction(lambda float64, calcGrad bool) (j 
 	j += lambda / (2 * m) * mt.SumAll(mt.Apply(theta, powTwo))
 
 	// Gradient calc
-	gradAux := mt.MultBy(mt.Mult(mt.Sub(hx, y), rg.X), 1 / m)
-	grad = [][][]float64{mt.Sum(gradAux, mt.MultBy(theta, lambda / m))}
+	gradAux := mt.MultBy(mt.Mult(mt.Sub(hx, y), rg.X), 1/m)
+	grad = [][][]float64{mt.Sum(gradAux, mt.MultBy(theta, lambda/m))}
 
 	return
 }
@@ -174,7 +172,8 @@ func (rg *Regression) logisticRegCostFunction(lambda float64, calcGrad bool) (j 
 // the cross validations, after obtain the best lambda, check the perfomand
 // against the test set of data
 func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) (finalCost float64, trainingData *Regression, lambda float64, testData *Regression) {
-	lambdas := []float64{0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300}
+	// lambdas := []float64{0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300}
+	lambdas := []float64{1}
 
 	if suffleData {
 		rg = rg.shuffle()
@@ -182,26 +181,11 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 
 	// Get the 60% of the data as training data, 20% as cross validation, and
 	// the remaining 20% as test data
-	training := int64(float64(len(rg.X)) * 0.6)
-	cv := int64(float64(len(rg.X)) * 0.8)
 
 	trainingData = &Regression{
-		X: rg.X[:training],
-		Y: rg.Y[:training],
-		Theta: rg.Theta,
-		LinearReg: rg.LinearReg,
-	}
-
-	cvData := &Regression{
-		X: rg.X[training:cv],
-		Y: rg.Y[training:cv],
-		Theta: rg.Theta,
-		LinearReg: rg.LinearReg,
-	}
-	testData = &Regression{
-		X: rg.X[cv:],
-		Y: rg.Y[cv:],
-		Theta: rg.Theta,
+		X:         rg.X,
+		Y:         rg.Y,
+		Theta:     rg.Theta,
 		LinearReg: rg.LinearReg,
 	}
 
@@ -218,9 +202,8 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 		}
 		copy(trainingData.Theta, initTheta)
 		Fmincg(trainingData, posLambda, 10, verbose)
-		cvData.Theta = trainingData.Theta
 
-		j, _, _ := cvData.CostFunction(posLambda, false)
+		j, _, _ := trainingData.CostFunction(posLambda, false)
 
 		if bestJ > j {
 			bestJ = j
@@ -228,20 +211,15 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 		}
 	}
 
-	// Include the cross validation cases into the training for the final train
-	trainingData.X = append(trainingData.X, cvData.X...)
-	trainingData.Y = append(trainingData.Y, cvData.Y...)
-
 	if verbose {
 		fmt.Println("Lambda:", bestLambda)
 		fmt.Println("Training with the 80% of the samples...")
 	}
 	Fmincg(trainingData, bestLambda, maxIters, verbose)
 
-	testData.Theta = trainingData.Theta
 	rg.Theta = trainingData.Theta
 
-	finalCost, _, _ = testData.CostFunction(bestLambda, false)
+	finalCost, _, _ = trainingData.CostFunction(bestLambda, false)
 	bestLambda = bestLambda
 
 	return

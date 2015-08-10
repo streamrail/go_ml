@@ -246,7 +246,7 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 
 		accuracy := cvData.Accuracy()
 		if verbose {
-			fmt.Println("lambda %f produced accuracy %f\r\n:", posLambda, accuracy)
+			fmt.Printf("lambda %f produced accuracy %f\r\n:", posLambda, accuracy)
 		}
 
 		if accuracy > bestA {

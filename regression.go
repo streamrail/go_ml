@@ -240,7 +240,7 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 	rg.Theta = trainingData.Theta
 
 	finalCost, _, _ = trainingData.CostFunction(bestLambda, false)
-	bestLambda = bestLambda
+	lambda = bestLambda
 
 	return
 }

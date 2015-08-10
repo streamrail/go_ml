@@ -175,7 +175,7 @@ func (rg *Regression) Accuracy() float64 {
 		y := rg.Y[i]
 		h := rg.LogisticHipotesis(x)
 
-		if h >= 0.5 && y == 0 {
+		if h >= 0.5 && y == 1 {
 			correct++
 		}
 	}

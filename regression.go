@@ -190,7 +190,7 @@ func (rg *Regression) Accuracy() float64 {
 // different possibilities and the training data, and check the best match with
 // the cross validations, after obtain the best lambda, check the perfomand
 // against the test set of data
-func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) (finalCost float64, trainingData *Regression, lambda float64, testData *Regression) {
+func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) (finalCost float64, lambda float64, accuracy float64) {
 	// lambdas := []float64{0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300}
 	lambdas := []float64{0.0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3, 10}
 
@@ -204,7 +204,7 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 	training := int64(float64(len(rg.X)) * 0.6)
 	cv := int64(float64(len(rg.X)) * 0.8)
 
-	trainingData = &Regression{
+	trainingData := &Regression{
 		X:         rg.X[:training],
 		Y:         rg.Y[:training],
 		Theta:     rg.Theta,
@@ -217,7 +217,7 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 		Theta:     rg.Theta,
 		LinearReg: rg.LinearReg,
 	}
-	testData = &Regression{
+	testData := &Regression{
 		X:         rg.X[cv:],
 		Y:         rg.Y[cv:],
 		Theta:     rg.Theta,
@@ -247,7 +247,7 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 			// bestLambda = posLambda
 		}
 
-		accuracy := cvData.Accuracy()
+		accuracy = cvData.Accuracy()
 		if verbose {
 			fmt.Printf("lambda %f produced accuracy %f\r\n:", posLambda, accuracy)
 		}
@@ -258,20 +258,19 @@ func (rg *Regression) MinimizeCost(maxIters int, suffleData bool, verbose bool) 
 		}
 	}
 
-	// Include the cross validation cases into the training for the final train
-	trainingData.X = append(trainingData.X, cvData.X...)
-	trainingData.Y = append(trainingData.Y, cvData.Y...)
-
 	if verbose {
 		fmt.Println("Lambda:", bestLambda)
 		fmt.Println("Training with the 80% of the samples...")
 	}
+
+	// train using best lambda
 	Fmincg(trainingData, bestLambda, maxIters, verbose)
 
 	testData.Theta = trainingData.Theta
 	rg.Theta = trainingData.Theta
 
 	finalCost, _, _ = testData.CostFunction(bestLambda, false)
+	accuracy = testData.Accuracy()
 	lambda = bestLambda
 
 	return
